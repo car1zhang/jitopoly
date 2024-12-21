@@ -1,6 +1,22 @@
 import { Game } from './game';
 import { Player } from './player';
 import type { GameMap, Country, Tile, PropertyTile, EventTile } from './map';
+import { io } from 'socket.io-client';
+
+const joinRoom = document.getElementById("join-game") as HTMLElement | null;
+const user = document.getElementById("username") as HTMLInputElement;
+const socket = io('http://localhost:8000')
+
+joinRoom?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const username = user.value;
+  socket.emit('join-game', username)
+})
+
+socket.on("receive-message", (username) => {
+  const playerList = document.getElementById("playerList") as HTMLElement;
+  playerList.innerHTML += `<p>${username}</p>`;
+})
 
 const placeholderCountries: Country[] = [
   { name: 'Brazil', flag:'brazil.png' },
@@ -47,7 +63,9 @@ const randomEvents: RandomEvent[] = [
 ];
 
 window.addEventListener('load', () => {
-
+  socket.on('connect', () => {
+    console.log('You have connected to the server.')
+  });
   
   const game = new Game('gameCanvas', [new Player('1', 'Player 1', '#000000', 1500, 0)], [/* mapTile */], [/* mapCountries */]);
  // maybe make map an import and in a separate file

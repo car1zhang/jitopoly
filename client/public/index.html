@@ -16,8 +16,18 @@
         background-color: #f0f0f0;
       }
     </style>
+    <script type="module" src="../src/index.ts"></script>
   </head>
   <body>
-    <canvas id="gameCanvas"></canvas>
+    <!-- <canvas id="gameCanvas"></canvas> -->
+    <div>
+      <form id="join-game">
+        <input required type="text" placeholder="Username" id="username">
+        <button type="submit">Join</button>
+      </form>
+    </div>
+    <div id="playerList">
+
+    </div>
   </body>
 </html>
