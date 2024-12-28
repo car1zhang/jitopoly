@@ -9,20 +9,20 @@ interface Log {
 }
 
 class Game {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  //private canvas: HTMLCanvasElement;
+  //private ctx: CanvasRenderingContext2D;
 
-  constructor(canvasId: string, players: Player[], mapTiles: Tile[], mapCountries: Country[]) {
-    this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
+  constructor(canvasId: string, me: Player, players: Player[], mapTiles: Tile[], mapCountries: Country[]) {
+    //this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    //this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     
     this.players = players;
-    this.me = this.players[0]; // how will this work using socket
+    this.me = me;
     this.map = new GameMap(mapTiles, mapCountries);
     
     // Set canvas size
-    this.canvas.width = 800;
-    this.canvas.height = 800;
+    //this.canvas.width = 800;
+    //this.canvas.height = 800;
     
     // Start game loop
     this.gameLoop();
@@ -32,7 +32,9 @@ class Game {
     this.map.updateTiles(newTile);
   }
 
-  public tileAction = (newTile: Tile): void => {
+  public tileAction = (): void => {
+    const newTile:Tile = this.map.getTile(this.me.position);
+
     if('country' in newTile){
       if(newTile.houses > 0){
         // owned by someone
@@ -96,7 +98,7 @@ class Game {
     }
   }
 
-  public makeMove = (): void => {
+  public makeMove = (): Player => {
     const rollDice1:number = Math.floor(Math.random() * 6) + 1;
     const rollDice2:number = Math.floor(Math.random() * 6) + 1;
     const moveForward = rollDice1 + rollDice2;
@@ -110,12 +112,18 @@ class Game {
     if(originalPosition > newPosition && newPosition != 0){
       const startTile = this.map.getTile(0) as EventTile;
       startTile.event(this.me);
+      this.printLog(`${this.me.name} passed by start.`)
     }
-    this.tileAction(newTile);
+    return this.me;
+  }
+
+  public checkPlayerTurn = (ind: number): boolean => {
+    const cur = this.players[ind];
+    return (this.me.name == cur.name && this.me.id == cur.id); // this will need to be changed later since direct comparisons between objects don't work
   }
 
   private drawCanvas = (): void => {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
   }
 

@@ -15,19 +15,26 @@
         height: 100vh;
         background-color: #f0f0f0;
       }
+      .hidden {
+        display: none;
+      }
     </style>
     <script type="module" src="../src/index.ts"></script>
   </head>
   <body>
     <!-- <canvas id="gameCanvas"></canvas> -->
-    <div>
+    <div id="join-div">
       <form id="join-game">
         <input required type="text" placeholder="Username" id="username">
+        <input required type="text" placeholder="Room" id="game-id">
         <button type="submit">Join</button>
       </form>
     </div>
-    <div id="playerList">
-
+    <div id="playerList"></div>
+    <button class="hidden" id="start-game">Start Game</button>
+    <div>
+      <button class="hidden" id="move">Move</button>
+      <button class="hidden" id="end-move">End Turn</button>
     </div>
   </body>
 </html>

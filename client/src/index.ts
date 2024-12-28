@@ -3,20 +3,26 @@ import { Player } from './player';
 import type { GameMap, Country, Tile, PropertyTile, EventTile } from './map';
 import { io } from 'socket.io-client';
 
-const joinRoom = document.getElementById("join-game") as HTMLElement | null;
-const user = document.getElementById("username") as HTMLInputElement;
-const socket = io('http://localhost:8000')
+let game: Game | null = null;
 
-joinRoom?.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const username = user.value;
-  socket.emit('join-game', username)
-})
-
-socket.on("receive-message", (username) => {
-  const playerList = document.getElementById("playerList") as HTMLElement;
-  playerList.innerHTML += `<p>${username}</p>`;
-})
+const placeholderMap: Tile[] = [
+    {
+      name: 'Start',
+      icon: 'start.png',
+      event: (player: Player) => {
+        player.money += 300;
+        //game.printLog(`${player.name} received $300 for landing on start.`, player);
+      }
+    },
+    {
+      name: 'Salvador',
+      country: 'Brazil',
+      basePrice: 60,
+      upgradePrice: 50,
+      rent: [2, 10, 30, 90, 160, 250],
+      houses: 0,
+    }
+]
 
 const placeholderCountries: Country[] = [
   { name: 'Brazil', flag:'brazil.png' },
@@ -29,6 +35,22 @@ const placeholderCountries: Country[] = [
   { name: 'United States', flag: 'us.png' },
   { name: 'United Kingdom', flag: 'uk.png '}
 ];
+
+interface Update {
+  type: string,
+  player?: Player,
+  tile?: Tile
+}
+
+const randomUpdates: { [key: string]: (update: Update) => void } = {
+  "move": (update: Update) => {
+    
+    console.log("Move update");
+    //game?.printLog()
+  }
+}
+
+  socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
 
 interface RandomEvent {
   description: string;
@@ -62,13 +84,133 @@ const randomEvents: RandomEvent[] = [
   }
 ];
 
+const joinRoom = document.getElementById("join-game") as HTMLElement | null;
+const user = document.getElementById("username") as HTMLInputElement;
+const gameRoom = document.getElementById("game-id") as HTMLInputElement;
+const startToggle = document.getElementById("start-game") as HTMLButtonElement;
+const moveToggle = document.getElementById("move") as HTMLButtonElement;
+const endTurnToggle = document.getElementById("end-move") as HTMLButtonElement;
+const socket = io('http://localhost:8000')
+let me: Player | null = null;
+
+joinRoom?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const username = user.value;
+  const gameId = gameRoom.value;
+  const hide = document.getElementById("join-div") as HTMLDivElement;
+  me = new Player('1', username, '#000000', 1500, 0);
+  socket.emit('join-game', gameId, me);
+  hide.style.display = 'none';
+  enableStartGameOption();
+})
+const enableStartGameOption = (): void => {
+  startToggle.classList.remove('hidden');
+}
+startToggle?.addEventListener('click', () => {
+  socket.emit("get-player-list", gameRoom.value);
+})
+socket.on("player-data", (players) => {
+  startToggle.classList.add('hidden');  
+  const playerList: Player[] = [];
+  players.forEach((elem: Player) => { 
+    playerList.push(new Player(elem.id, elem.name, elem.color, elem.money, elem.position))
+  })
+  console.log(playerList);
+  startGame(playerList); // assume that you would start the game after retrieving this data
+})
+
+const enableMove = (): void => {
+  moveToggle.classList.remove("hidden");
+  // this should also allow buying houses, upgrades etc to be part of the update list 
+} 
+moveToggle?.addEventListener('click', () => {
+  moveToggle.classList.add("hidden");
+  const test: Update = {description: 'make-move', player: game?.makeMove() as Player}
+  
+  socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
+
+  // PROVIDE UPDATE HERE -> only calls the server with the update, no need to make a local update first
+
+
+  //game?.tileAction(); 
+  enableEndTurn();
+})
+const enableEndTurn = (): void => {
+  endTurnToggle.classList.remove("hidden");
+}
+endTurnToggle?.addEventListener('click', () => {
+  endTurnToggle.classList.add("hidden");
+  socket.emit("new-turn", gameRoom.value);
+})
+
+const disableMove = (): void => {
+  moveToggle.classList.add("hidden");
+  // this should disable upgrades and stuff on the update list
+}
+
+
+
+
+const updateLocalGame = (update: Update): void => {
+  switch(){
+    case :
+      break;
+    default:
+
+  }
+}
+
+const startGame = (playerList: Player[]): void => {
+  game = new Game('gameCanvas', me as Player, playerList, placeholderMap, placeholderCountries);  
+  socket.emit("start-game", gameRoom.value); // need some gameupdate
+}
+
+socket.on("update-local-game", (change) => {
+  // make updates
+  const playerTurn: number = change.turn;
+  const update: Update = change.update;
+  if(update !== null) updateLocalGame(update);
+
+  (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
+
+
+  // another way we can do it is by singular updates to the server
+  // therefore we would not need to process a updates array
+  // this is good since every thing the player does should be updated instantly
+  // only end turn when an end-turn signal has been given
+})
+
+// need to make the game functions for any player
+// no actually there should be the same functions but tagged update
+// so both you can update and buy
+
+// now to update the game, what should be included?
+// 
+// there can be multiple game updates in one -> package it into an array
+// player buys a property: requires Player who buys it, the tile
+// upgrade/downgrade house: requires Player, the tile
+// makeMove: requires the player
+
+
+
+socket.on("new-players", (players) => {
+  const playerList = document.getElementById("playerList") as HTMLElement;
+  playerList.innerHTML='';
+  players.forEach((player: Player): void => {
+    playerList.innerHTML += `<p>${player.name}</p>`
+  })
+})
+socket.on("receive-message", (actionLog) => {
+  // do something with game log
+})
+
 window.addEventListener('load', () => {
   socket.on('connect', () => {
     console.log('You have connected to the server.')
   });
   
-  const game = new Game('gameCanvas', [new Player('1', 'Player 1', '#000000', 1500, 0)], [/* mapTile */], [/* mapCountries */]);
  // maybe make map an import and in a separate file
+ /*
   const placeholderMap: Tile[] = [
     {
       name: 'Start',
@@ -419,4 +561,5 @@ window.addEventListener('load', () => {
       houses: 0,
     }
   ];
+  */
 });
