@@ -2,6 +2,8 @@ const express = require('express')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
 
+let games = {}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -11,9 +13,54 @@ const io = new Server(httpServer, {
 })
 
 io.on('connection', (socket) => {
-    console.log(socket.id)
-    socket.on("join-game", (username) => {
-        io.emit("receive-message", `${username} has joined the game.`)
+    socket.on("join-game", (gameId, player) => {
+        socket.join(gameId)
+        console.log(`User ${player.name} has joined the game room ${gameId}`)
+        if(!games[gameId]){
+            games[gameId] = {
+                players: [],
+                turn: 0
+            }
+        }
+        games[gameId].players.push(player)
+        console.log(games[gameId].players)
+        io.to(gameId).emit("new-players", games[gameId].players)
+    })
+    socket.on("get-player-list", (gameId) => {
+        console.log(`Grabbing all player-data in the room ${gameId}`)
+        io.to(gameId).emit("player-data", games[gameId].players)
+    })
+    socket.on("start-game", (gameId) => {
+        const playerTurn = games[gameId].turn
+        console.log(`Starting the game. It is player ${playerTurn}'s turn.`)
+        io.to(gameId).emit("update-local-game", 
+            {
+                turn: playerTurn,
+                update: null
+            })
+    })
+    socket.on("new-turn", (gameId) => {
+        const playerTurn = (games[gameId].turn + 1) % games[gameId].players.length
+        games[gameId].turn = playerTurn
+        console.log(`It is player ${playerTurn}'s turn.`)
+        io.to(gameId).emit("update-local-game", 
+            {
+                turn: playerTurn,
+                update: null
+            })
+    })
+    socket.on("update-game", (gameId, gameUpdate) => {
+        const playerTurn = games[gameId].turn 
+        console.log(`Updating something`) // yes
+        io.to(gameId).emit("update-local-game", 
+            {
+                turn: playerTurn,
+                update: gameUpdate
+            })
+        //  single updates only
+    })
+    socket.on("disconnect", () => {
+        console.log('a user disconnected')
     })
 })
 
