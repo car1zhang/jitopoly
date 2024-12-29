@@ -98,28 +98,34 @@ class Game {
     }
   }
 
-  public makeMove = (): Player => {
-    const rollDice1:number = Math.floor(Math.random() * 6) + 1;
-    const rollDice2:number = Math.floor(Math.random() * 6) + 1;
+  public makeMove = (): Player => { // this function should return a player, not directly update it
+    const originalPlayer = this.me;
+    const rollDice1 = Math.floor(Math.random() * 6) + 1;
+    const rollDice2 = Math.floor(Math.random() * 6) + 1;
     const moveForward = rollDice1 + rollDice2;
-    const newPosition:number = (this.me.position + moveForward) % this.map.mapSize();
-    const originalPosition:number = this.me.position;
-    this.me.position = newPosition;
+    const newPosition = (this.me.position + moveForward) % 40 //this.map.mapSize();
+    const originalPosition = this.me.position;
+    originalPlayer.position = newPosition;
 
     const newTile:Tile = this.map.getTile(newPosition);
-    this.printLog(`${this.me.name} moves forward ${moveForward} squares`, this.me);
+    //this.printLog(`${this.me.name} moves forward ${moveForward} squares`, this.me);
 
     if(originalPosition > newPosition && newPosition != 0){
       const startTile = this.map.getTile(0) as EventTile;
-      startTile.event(this.me);
-      this.printLog(`${this.me.name} passed by start.`)
+      startTile.event(originalPlayer);
     }
-    return this.me;
+    return originalPlayer;
+  }
+
+  public updatePlayer = (newPlayer: Player): void => {
+    const findIndex = this.players.findIndex(player => player.id == newPlayer.id)
+    console.log(this.players[findIndex], newPlayer, "updating player here");
+    this.players[findIndex] = newPlayer;
   }
 
   public checkPlayerTurn = (ind: number): boolean => {
     const cur = this.players[ind];
-    return (this.me.name == cur.name && this.me.id == cur.id); // this will need to be changed later since direct comparisons between objects don't work
+    return (this.me.id == cur.id);
   }
 
   private drawCanvas = (): void => {
@@ -133,11 +139,14 @@ class Game {
     // Request next frame
     requestAnimationFrame(this.gameLoop);
   }
-
+  public printPlayers = (): Player[] => {
+    return this.players;
+  }
   public printLog = (message: string, player?: Player): void => {
     this.logs.push({ message, player });
   }
-
+  // should we even have me as a player? how would update another player's me? -> they could do this if the id of me is the same (like checkplayerturn)
+  // also players still contains yourself, so make sure that they are consistent
   private me: Player;
   private map: GameMap;
   private players: Player[] = [];

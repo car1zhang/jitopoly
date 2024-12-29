@@ -11,7 +11,7 @@ const placeholderMap: Tile[] = [
       icon: 'start.png',
       event: (player: Player) => {
         player.money += 300;
-        //game.printLog(`${player.name} received $300 for landing on start.`, player);
+        game?.printLog(`${player.name} received $300 for landing on start.`, player);
       }
     },
     {
@@ -41,16 +41,23 @@ interface Update {
   player?: Player,
   tile?: Tile
 }
+const uid = (): string => // source https://dev.to/rahmanfadhil/how-to-generate-unique-id-in-javascript-1b13#comment-1ol48
+  String(
+    Date.now().toString(32) +
+      Math.random().toString(16)
+  ).replace(/\./g, '')
 
 const randomUpdates: { [key: string]: (update: Update) => void } = {
   "move": (update: Update) => {
-    
-    console.log("Move update");
-    //game?.printLog()
+    game?.updatePlayer(update.player as Player);
+    game?.printLog('Move Forward', update.player as Player)
+  },
+  "buy": () => {
+
   }
 }
 
-  socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
+  //socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
 
 interface RandomEvent {
   description: string;
@@ -98,7 +105,7 @@ joinRoom?.addEventListener('submit', (event) => {
   const username = user.value;
   const gameId = gameRoom.value;
   const hide = document.getElementById("join-div") as HTMLDivElement;
-  me = new Player('1', username, '#000000', 1500, 0);
+  me = new Player(uid(), username, '#000000', 1500, 0);
   socket.emit('join-game', gameId, me);
   hide.style.display = 'none';
   enableStartGameOption();
@@ -125,9 +132,9 @@ const enableMove = (): void => {
 } 
 moveToggle?.addEventListener('click', () => {
   moveToggle.classList.add("hidden");
-  const test: Update = {description: 'make-move', player: game?.makeMove() as Player}
-  
-  socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
+  socket.emit("update-game", gameRoom.value, {type: 'move', player: game?.makeMove()} as Update)
+
+
 
   // PROVIDE UPDATE HERE -> only calls the server with the update, no need to make a local update first
 
@@ -135,6 +142,7 @@ moveToggle?.addEventListener('click', () => {
   //game?.tileAction(); 
   enableEndTurn();
 })
+
 const enableEndTurn = (): void => {
   endTurnToggle.classList.remove("hidden");
 }
@@ -152,11 +160,12 @@ const disableMove = (): void => {
 
 
 const updateLocalGame = (update: Update): void => {
-  switch(){
-    case :
+  switch(update.type){
+    case "move":
+      randomUpdates["move"](update);
       break;
     default:
-
+      console.log("nothing");
   }
 }
 
@@ -170,9 +179,10 @@ socket.on("update-local-game", (change) => {
   const playerTurn: number = change.turn;
   const update: Update = change.update;
   if(update !== null) updateLocalGame(update);
-
-  (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
-
+  else (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
+  console.log(game?.printPlayers() as Player[]);
+  
+  // I FINALLY FIGURED IT OUT, WHEN THE CODE UPDATES THE MOVE, IT COMES BACK HERE AND RE-ENABLES THE MOVE, HOWEVER THIS SHOULD ONLY RUN THE FIRST TIME
 
   // another way we can do it is by singular updates to the server
   // therefore we would not need to process a updates array

@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
     })
     socket.on("update-game", (gameId, gameUpdate) => {
         const playerTurn = games[gameId].turn 
-        console.log(`Updating something`) // yes
+        console.log(`Updating game`) // yes
         io.to(gameId).emit("update-local-game", 
             {
                 turn: playerTurn,
