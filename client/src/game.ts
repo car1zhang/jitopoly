@@ -9,21 +9,27 @@ interface Log {
 }
 
 class Game {
-  //private canvas: HTMLCanvasElement;
-  //private ctx: CanvasRenderingContext2D;
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private cornerSize: number;
+  private tileSize: number;
 
   constructor(canvasId: string, me: Player, players: Player[], mapTiles: Tile[], mapCountries: Country[]) {
-    //this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    //this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
+    this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     
     this.players = players;
     this.me = me;
     this.map = new GameMap(mapTiles, mapCountries);
     
     // Set canvas size
-    //this.canvas.width = 800;
-    //this.canvas.height = 800;
+    this.canvas.width = 800;
+    this.canvas.height = 800;
     
+    // set corner and tile sizes
+    this.cornerSize = 100;
+    this.tileSize = 600 / (this.map.mapSize() / 4 - 2);
+
     // Start game loop
     this.gameLoop();
   }
@@ -131,16 +137,77 @@ class Game {
   private drawCanvas = (): void => {
     //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-  }
+    let currentTile = 0;
+    let sideTiles = this.map.mapSize() / 4;
+    let x=0, y=0;
+    // draw top row
+    for(let top=0; top<sideTiles-1; top++){
+      if(top == 0){
+        this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
+        x+=this.cornerSize;
+      }
+      else{
+        this.drawTile(x, y, this.tileSize, this.cornerSize, this.map.getTile(currentTile));
+        x+=this.tileSize;
+      }
+      currentTile++;
+    }
+    // draw right column
+    for(let right=0; right<sideTiles-1; right++){
+      if(right == 0){
+        this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
+        y+=this.cornerSize;
+      }
+      else{
+        this.drawTile(x, y, this.cornerSize, this.tileSize, this.map.getTile(currentTile));
+        y+=this.tileSize;
+      }
+      currentTile++;
+    }
+    // draw bottom row
+    for(let bottom=0; bottom<sideTiles-1; bottom++){
+      if(bottom == 0){
+        this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
+        x-=this.tileSize;
+      }
+      else if(bottom == sideTiles-2){
+        this.drawTile(x, y, this.tileSize, this.cornerSize, this.map.getTile(currentTile));
+        x-=this.cornerSize;
+      }
+      else{
+        this.drawTile(x, y, this.tileSize, this.cornerSize, this.map.getTile(currentTile));
+        x-=this.tileSize;
+      }
+      currentTile++;
+    }
+    // draw left column
+    for(let left=0; left<sideTiles-1; left++){
+      if(left == 0){
+        this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
+        y-=this.tileSize;
+      }
+      else{
+        this.drawTile(x, y, this.cornerSize, this.tileSize, this.map.getTile(currentTile));
+        y-=this.tileSize;
+      }
+      currentTile++;
+    }
 
+
+  }
+  private drawTile = (x: number, y: number, width: number, height: number, tile: Tile): void => {
+    this.ctx.fillStyle = 'yellow'; // change to smt else
+    this.ctx.fillRect(x, y, width, height);
+    this.ctx.strokeStyle = 'black';
+    this.ctx.strokeRect(x, y, width, height);
+    // do something with tile
+
+  }
   private gameLoop = (): void => {
     this.drawCanvas();
-    
+    console.log("here drawing"); 
     // Request next frame
     requestAnimationFrame(this.gameLoop);
-  }
-  public printPlayers = (): Player[] => {
-    return this.players;
   }
   public printLog = (message: string, player?: Player): void => {
     this.logs.push({ message, player });
