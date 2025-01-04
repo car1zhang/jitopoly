@@ -5,25 +5,6 @@ import { io } from 'socket.io-client';
 
 let game: Game | null = null;
 
-/*const placeholderMap: Tile[] = [
-    {
-      name: 'Start',
-      icon: 'start.png',
-      event: (player: Player) => {
-        player.money += 300;
-        game?.printLog(`${player.name} received $300 for landing on start.`, player);
-      }
-    },
-    {
-      name: 'Salvador',
-      country: 'Brazil',
-      basePrice: 60,
-      upgradePrice: 50,
-      rent: [2, 10, 30, 90, 160, 250],
-      houses: 0,
-    }
-]*/
-
  // maybe make map an import and in a separate file
  
 const placeholderMap: Tile[] = [
@@ -450,6 +431,7 @@ const gameRoom = document.getElementById("game-id") as HTMLInputElement;
 const startToggle = document.getElementById("start-game") as HTMLButtonElement;
 const moveToggle = document.getElementById("move") as HTMLButtonElement;
 const endTurnToggle = document.getElementById("end-move") as HTMLButtonElement;
+const canvasElement = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const socket = io('http://localhost:8000')
 let me: Player | null = null;
 

@@ -18,11 +18,25 @@
       .hidden {
         display: none;
       }
+      .popup {
+        position: fixed;
+        height: 100px;
+        width: 100px;
+        border: 2px solid black;
+      }
     </style>
     <script type="module" src="../src/index.ts"></script>
   </head>
   <body>
-    <canvas id="gameCanvas"></canvas> 
+    <div>
+      <canvas id="gameCanvas"></canvas> 
+      <div class="hidden popup" id="popup">
+        <h3 id="tileName">Tile name</h3>
+        <div>
+          
+        </div>
+      </div>
+    </div>
     <div id="join-div">
       <form id="join-game">
         <input required type="text" placeholder="Username" id="username">
