@@ -2,6 +2,7 @@ import type { Tile, Country, EventTile, PropertyTile } from './map';
 import { GameMap } from './map';
 import { Player } from './player';
 import { Trade } from './trade';
+import { Canvas, FabricText, FabricImage, Rect, Group} from 'fabric';
 
 interface Log {
   player?: Player;
@@ -9,27 +10,25 @@ interface Log {
 }
 
 class Game {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  private canvas: Canvas;
   private cornerSize: number;
   private tileSize: number;
+  private activeTile: Tile | null;
 
   constructor(canvasId: string, me: Player, players: Player[], mapTiles: Tile[], mapCountries: Country[]) {
-    this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
+    this.canvas = new Canvas(canvasId);
     
     this.players = players;
     this.me = me;
     this.map = new GameMap(mapTiles, mapCountries);
-    
+ 
     // Set canvas size
-    this.canvas.width = 800;
-    this.canvas.height = 800;
-    
+    this.canvas.setDimensions({ width: 800, height: 800 });
+    this.canvas.selection = false;
     // set corner and tile sizes
     this.cornerSize = 100;
-    this.tileSize = 600 / (this.map.mapSize() / 4 - 2);
-
+    this.tileSize = 600 / (this.map.mapSize() / 4 - 1);
+    this.activeTile = null;
     // Start game loop
     this.gameLoop();
   }
@@ -109,7 +108,7 @@ class Game {
     const rollDice1 = Math.floor(Math.random() * 6) + 1;
     const rollDice2 = Math.floor(Math.random() * 6) + 1;
     const moveForward = rollDice1 + rollDice2;
-    const newPosition = (this.me.position + moveForward) % 40 //this.map.mapSize();
+    const newPosition = (this.me.position + moveForward) % this.map.mapSize();
     const originalPosition = this.me.position;
     originalPlayer.position = newPosition;
 
@@ -133,15 +132,41 @@ class Game {
     const cur = this.players[ind];
     return (this.me.id == cur.id);
   }
+  private showPropertyPopup = (tile: Tile, x: number, y: number): void => {
+    const popup = document.getElementById('popup');
+    if(popup){
+      if(this.activeTile === tile){
+        this.closePropertyPopup();
+        return;
+      }
+      popup.style.left = `${x}px`;
+      popup.style.top = `${y + 100}px`;
+      popup.classList.remove('hidden');
+      this.activeTile = tile;
+      document.removeEventListener('mousedown', this.handlePopupClick);
+      setTimeout(() => {
+        document.addEventListener('mousedown', this.handlePopupClick);
+      }, 0);
+    }
+  }
+  private handlePopupClick = (event: MouseEvent): void => {
+    const popup = document.getElementById('popup');
+    const clickEvent = event.target as HTMLElement;
+    if(popup && !popup.contains(clickEvent)) this.closePropertyPopup();
+  }
+  private closePropertyPopup = (): void => {
+    this.activeTile = null;
+    const popup = document.getElementById('popup') as HTMLDivElement;
+    popup.classList.add('hidden');
+    document.removeEventListener('mousedown', this.handlePopupClick);
+  }
 
   private drawCanvas = (): void => {
-    //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
     let currentTile = 0;
     let sideTiles = this.map.mapSize() / 4;
     let x=0, y=0;
     // draw top row
-    for(let top=0; top<sideTiles-1; top++){
+    for(let top=0; top<sideTiles; top++){
       if(top == 0){
         this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
         x+=this.cornerSize;
@@ -153,7 +178,7 @@ class Game {
       currentTile++;
     }
     // draw right column
-    for(let right=0; right<sideTiles-1; right++){
+    for(let right=0; right<sideTiles; right++){
       if(right == 0){
         this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
         y+=this.cornerSize;
@@ -165,12 +190,12 @@ class Game {
       currentTile++;
     }
     // draw bottom row
-    for(let bottom=0; bottom<sideTiles-1; bottom++){
+    for(let bottom=0; bottom<sideTiles; bottom++){
       if(bottom == 0){
         this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
         x-=this.tileSize;
       }
-      else if(bottom == sideTiles-2){
+      else if(bottom == sideTiles-1){
         this.drawTile(x, y, this.tileSize, this.cornerSize, this.map.getTile(currentTile));
         x-=this.cornerSize;
       }
@@ -181,7 +206,7 @@ class Game {
       currentTile++;
     }
     // draw left column
-    for(let left=0; left<sideTiles-1; left++){
+    for(let left=0; left<sideTiles; left++){
       if(left == 0){
         this.drawTile(x, y, this.cornerSize, this.cornerSize, this.map.getTile(currentTile));
         y-=this.tileSize;
@@ -192,22 +217,51 @@ class Game {
       }
       currentTile++;
     }
-
-
   }
   private drawTile = (x: number, y: number, width: number, height: number, tile: Tile): void => {
-    this.ctx.fillStyle = 'yellow'; // change to smt else
-    this.ctx.fillRect(x, y, width, height);
-    this.ctx.strokeStyle = 'black';
-    this.ctx.strokeRect(x, y, width, height);
+    const rect = new Rect({
+      left: x,
+      top: y,
+      fill: 'yellow',
+      width: width,
+      height: height,
+      stroke: 'black',
+      strokeWidth: 1,
+      hoverCursor: (tile as PropertyTile).country ? 'pointer' : 'default'
+    })
+    const text = new FabricText(tile.name, {
+      left: x+10,
+      top: y+10,
+      fontSize: 14,
+      fill: 'black'
+    })
+    //const img = new FabricImage()
+    // first determine the type of tile, then find the icon
+
+    const createTile = new Group([rect, text], {
+      left: x,
+      top: y,
+      selectable: false,
+      hasControls: false,
+      hoverCursor: (tile as PropertyTile).country ? 'pointer' : 'default'
+    })
     // do something with tile
 
+    if((tile as PropertyTile).country){
+      createTile.on('mousedown', (e) => {
+        console.log('Tile clicked', tile, e);
+        const canvasRect = createTile.getBoundingRect();
+        const canvasElement = this.canvas.upperCanvasEl;
+        const canvasBound = canvasElement.getBoundingClientRect();
+        this.showPropertyPopup(tile, canvasRect.left +  canvasBound.left, canvasRect.top + canvasBound.top);
+      })
+    }
+    this.canvas.add(createTile);
   }
   private gameLoop = (): void => {
     this.drawCanvas();
-    console.log("here drawing"); 
     // Request next frame
-    requestAnimationFrame(this.gameLoop);
+    //requestAnimationFrame(this.gameLoop);
   }
   public printLog = (message: string, player?: Player): void => {
     this.logs.push({ message, player });
