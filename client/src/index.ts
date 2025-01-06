@@ -382,12 +382,13 @@ const uid = (): string => // source https://dev.to/rahmanfadhil/how-to-generate-
   ).replace(/\./g, '')
 
 const randomUpdates: { [key: string]: (update: Update) => void } = {
-  "move": (update: Update) => {
+  "player": (update: Update) => {
     game?.updatePlayer(update.player as Player);
-    game?.printLog('Move Forward', update.player as Player)
+    //game?.printLog('Move Forward', update.player as Player)
   },
-  "buy": () => {
-
+  "tile": (update: Update) => {
+    game?.updateTile(update.tile as PropertyTile);
+    //game?.printLog()
   }
 }
 
@@ -431,7 +432,10 @@ const gameRoom = document.getElementById("game-id") as HTMLInputElement;
 const startToggle = document.getElementById("start-game") as HTMLButtonElement;
 const moveToggle = document.getElementById("move") as HTMLButtonElement;
 const endTurnToggle = document.getElementById("end-move") as HTMLButtonElement;
-const canvasElement = document.getElementById('gameCanvas') as HTMLCanvasElement;
+const buyPropertyToggle = document.getElementById('buy-property') as HTMLButtonElement;
+const upgradeToggle = document.getElementById("upgradeHouse") as HTMLButtonElement;
+const downgradeToggle = document.getElementById("downgradeHouse") as HTMLButtonElement;
+const canvasToggle = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const socket = io('http://localhost:8000')
 let me: Player | null = null;
 
@@ -448,7 +452,7 @@ joinRoom?.addEventListener('submit', (event) => {
 const enableStartGameOption = (): void => {
   startToggle.classList.remove('hidden');
 }
-startToggle?.addEventListener('click', () => {
+startToggle.addEventListener('click', () => {
   socket.emit("get-player-list", gameRoom.value);
 })
 socket.on("player-data", (players) => {
@@ -465,23 +469,65 @@ const enableMove = (): void => {
   moveToggle.classList.remove("hidden");
   // this should also allow buying houses, upgrades etc to be part of the update list 
 } 
-moveToggle?.addEventListener('click', () => {
+moveToggle.addEventListener('click', () => {
   moveToggle.classList.add("hidden");
-  socket.emit("update-game", gameRoom.value, {type: 'move', player: game?.makeMove()} as Update)
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.makeMove()} as Update);
 
 
 
   // PROVIDE UPDATE HERE -> only calls the server with the update, no need to make a local update first
 
 
-  //game?.tileAction(); 
+  const tileActionUpdates = game?.tileAction();
+  if(tileActionUpdates){
+    tileActionUpdates.forEach((player: Player) => {
+      socket.emit("update-game", gameRoom.value, {type: 'player', player: player} as Update);
+    })
+  }
+  else{
+    // give buy option
+    enableBuyProperty();
+  }
+
+
   enableEndTurn();
 })
+
+const enableBuyProperty = (): void => {
+  buyPropertyToggle.innerText = `Buy Property for $${game?.currentPropertyCost()}`;
+  buyPropertyToggle.classList.remove("hidden");
+  // the css of the three buttons may affect each other when one is not displayed
+}
+buyPropertyToggle.addEventListener('click', () => {
+  buyPropertyToggle.classList.add("hidden");
+  // only allow buy-property if player has enough money -> should update
+  const newProperty = game?.buyProperty() as PropertyTile;
+  socket.emit("update-game", gameRoom.value, {type: 'tile', tile: newProperty} as Update);
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+})
+
+upgradeToggle.addEventListener('click', () => {
+  // only can be clicked if player has enough money and more houses to be added and you are owner
+  // two updates, one on player, one on tile
+  const upgradedTile = game?.upgradeHouse();
+  socket.emit("update-game", gameRoom.value, {type: 'tile', tile: upgradedTile} as Update);
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+})
+
+downgradeToggle.addEventListener('click', () => {
+  // only can be clicked if houses to be removed and you are owner
+  const downgradedTile = game?.downgradeHouse();
+  socket.emit("update-game", gameRoom.value, {type: 'tile', tile: downgradedTile} as Update);
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+})
+
 
 const enableEndTurn = (): void => {
   endTurnToggle.classList.remove("hidden");
 }
-endTurnToggle?.addEventListener('click', () => {
+endTurnToggle.addEventListener('click', () => {
+  // remember end turn cannot happen if current player money is in the negative -> should just be unclickable
+  buyPropertyToggle.classList.add("hidden");
   endTurnToggle.classList.add("hidden");
   socket.emit("new-turn", gameRoom.value);
 })
@@ -496,15 +542,18 @@ const disableMove = (): void => {
 
 const updateLocalGame = (update: Update): void => {
   switch(update.type){
-    case "move":
-      randomUpdates["move"](update);
+    case "player":
+      randomUpdates["player"](update);
       break;
+    case "tile":
+      randomUpdates["tile"](update);
     default:
       console.log("nothing");
   }
 }
 
 const startGame = (playerList: Player[]): void => {
+  canvasToggle.classList.remove("hidden");
   game = new Game('gameCanvas', me as Player, playerList, placeholderMap, placeholderCountries);  
   socket.emit("start-game", gameRoom.value); // need some gameupdate
 }
