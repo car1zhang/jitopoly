@@ -384,11 +384,10 @@ const uid = (): string => // source https://dev.to/rahmanfadhil/how-to-generate-
 const randomUpdates: { [key: string]: (update: Update) => void } = {
   "player": (update: Update) => {
     game?.updatePlayer(update.player as Player);
-    //game?.printLog('Move Forward', update.player as Player)
+    updatePlayerList(game?.getPlayers() as Player[]);
   },
   "tile": (update: Update) => {
     game?.updateTile(update.tile as PropertyTile);
-    //game?.printLog()
   }
 }
 
@@ -537,7 +536,13 @@ const disableMove = (): void => {
 }
 
 
-
+const updatePlayerList = (players: Player[]): void => {
+  const playerList = document.getElementById("playerList") as HTMLElement;
+  playerList.innerHTML='';
+  players.forEach((player: Player) => {
+    playerList.innerHTML += `<div><p>${player.name}</p><p>${player.money}</p></div>`
+  })
+}
 
 const updateLocalGame = (update: Update): void => {
   switch(update.type){
@@ -566,11 +571,7 @@ socket.on("update-local-game", (change) => {
   else (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
 })
 socket.on("new-players", (players) => {
-  const playerList = document.getElementById("playerList") as HTMLElement;
-  playerList.innerHTML='';
-  players.forEach((player: Player): void => {
-    playerList.innerHTML += `<p>${player.name}</p>`
-  })
+  updatePlayerList(players as Player[]);
 })
 socket.on("receive-message", (actionLog: Log[]) => {
   gameLogToggle.innerHTML = ``;

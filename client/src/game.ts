@@ -49,7 +49,7 @@ class Game {
           tileOwner.money += currentRent;
           updatePlayers.push(this.me);
           updatePlayers.push(tileOwner);
-          this.printLog(`${this.me.name} pays ${tileOwner} $${currentRent} for rent`);
+          this.printLog(`${this.me.name} pays ${tileOwner.name} $${currentRent} for rent`);
           return updatePlayers;
         }
       }
@@ -137,6 +137,9 @@ class Game {
   }
   public getMe = (): Player => {
     return this.me;
+  }
+  public getPlayers = (): Player[] => {
+    return this.players;
   }
   public currentPropertyCost = (): number => {
     return (this.activeTile as PropertyTile).basePrice;
