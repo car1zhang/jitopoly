@@ -1,4 +1,4 @@
-import { Game } from './game';
+import { Game, Log } from './game';
 import { Player } from './player';
 import type { GameMap, Country, Tile, PropertyTile, EventTile } from './map';
 import { io } from 'socket.io-client';
@@ -13,7 +13,7 @@ const placeholderMap: Tile[] = [
     icon: 'start.png',
     event: (player: Player) => {
       player.money += 300;
-      game?.printLog(`${player.name} received $300 for landing on start.`, player);
+      game?.printLog(`${player.name} received $300 for passing start.`, player);
     }
   },
   {
@@ -392,8 +392,6 @@ const randomUpdates: { [key: string]: (update: Update) => void } = {
   }
 }
 
-  //socket.emit("update-game", gameRoom.value, {description: 'make-move', player: game?.makeMove() as Player})
-
 interface RandomEvent {
   description: string;
   event: (player: Player) => void;
@@ -435,7 +433,8 @@ const endTurnToggle = document.getElementById("end-move") as HTMLButtonElement;
 const buyPropertyToggle = document.getElementById('buy-property') as HTMLButtonElement;
 const upgradeToggle = document.getElementById("upgradeHouse") as HTMLButtonElement;
 const downgradeToggle = document.getElementById("downgradeHouse") as HTMLButtonElement;
-const canvasToggle = document.getElementById('gameCanvas') as HTMLCanvasElement;
+const canvasToggle = document.getElementById('canvasWrapper') as HTMLCanvasElement;
+const gameLogToggle = document.getElementById("gameLog") as HTMLDivElement;
 const socket = io('http://localhost:8000')
 let me: Player | null = null;
 
@@ -555,6 +554,7 @@ const updateLocalGame = (update: Update): void => {
 const startGame = (playerList: Player[]): void => {
   canvasToggle.classList.remove("hidden");
   game = new Game('gameCanvas', me as Player, playerList, placeholderMap, placeholderCountries);  
+  game.printLog(`The game has started`);
   socket.emit("start-game", gameRoom.value); // need some gameupdate
 }
 
@@ -565,13 +565,6 @@ socket.on("update-local-game", (change) => {
   if(update !== null) updateLocalGame(update);
   else (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
 })
-
-// player buys a property: requires Player who buys it, the tile
-// upgrade/downgrade house: requires Player, the tile
-// makeMove: requires the player
-
-
-
 socket.on("new-players", (players) => {
   const playerList = document.getElementById("playerList") as HTMLElement;
   playerList.innerHTML='';
@@ -579,9 +572,18 @@ socket.on("new-players", (players) => {
     playerList.innerHTML += `<p>${player.name}</p>`
   })
 })
-socket.on("receive-message", (actionLog) => {
-  // do something with game log
+socket.on("receive-message", (actionLog: Log[]) => {
+  gameLogToggle.innerHTML = ``;
+  actionLog.forEach((curLog: Log) => {
+    gameLogToggle.innerHTML += `<p>${curLog.message}</p>`;
+  })
+  game?.updateLog(actionLog);
 })
+gameLogToggle.addEventListener("logsChange", (event: Event) => {
+  const updateLogs = (event as CustomEvent).detail as Log[];
+  socket.emit("update-log", gameRoom.value, updateLogs)
+})
+
 
 window.addEventListener('load', () => {
   socket.on('connect', () => {

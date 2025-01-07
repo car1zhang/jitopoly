@@ -2,7 +2,7 @@ const express = require('express')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
 
-let games = {}
+let games = {} // i will use mongodb: take gameID: players[] and turn
 
 const app = express();
 const httpServer = createServer(app);
@@ -58,6 +58,9 @@ io.on('connection', (socket) => {
                 update: gameUpdate
             })
         //  single updates only
+    })
+    socket.on("update-log", (gameId, updateLog) => {
+        io.to(gameId).emit("receive-message", updateLog)
     })
     socket.on("disconnect", () => {
         console.log('a user disconnected')

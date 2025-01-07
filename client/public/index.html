@@ -41,7 +41,10 @@
   <body>
     <div>
       <h1>Jitopoly</h1>
-      <canvas class="hidden" id="gameCanvas"></canvas> 
+      <div class="hidden" id="canvasWrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameLog"></div>
+      </div>
       <div class="hidden popup" id="popup">
         <div>
           <h3 id="tileName">Tile name</h3>

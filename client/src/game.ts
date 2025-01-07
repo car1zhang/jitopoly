@@ -49,7 +49,7 @@ class Game {
           tileOwner.money += currentRent;
           updatePlayers.push(this.me);
           updatePlayers.push(tileOwner);
-          this.printLog(`${this.me.name} pays ${newTile.owner} $${currentRent} for rent`, this.me);
+          this.printLog(`${this.me.name} pays ${tileOwner} $${currentRent} for rent`);
           return updatePlayers;
         }
       }
@@ -64,7 +64,6 @@ class Game {
     updatePlayers.push(this.me);
     return updatePlayers;
   }
-
   public buyProperty = (): PropertyTile => {
     // only can be called if player has enough money (has to be clicked)
     const property = this.map.getTile(this.me.position) as PropertyTile;
@@ -77,13 +76,12 @@ class Game {
     // options to sell house/mortgage
     return property;
   }
-
   public upgradeHouse = (): PropertyTile => {
     const tile = this.activeTile as PropertyTile;
     const upgradeCost = tile.upgradePrice;
     tile.houses++;
     this.me.money -= upgradeCost;
-    //this.printLog(`${this.me.name} upgraded house to level ${newTile.houses}`, this.me);
+    this.printLog(`${this.me.name} upgraded house in ${tile.name} to level ${tile.houses}`, this.me);
     return tile;
   }
   public downgradeHouse = (): PropertyTile => {
@@ -92,30 +90,31 @@ class Game {
     if(tile.houses == 1){
       this.me.money += Math.floor(0.8 * tile.basePrice);
       tile.owner = undefined;
+      this.printLog(`${this.me.name} downgraded house in ${tile.name} to level ${tile.houses}`, this.me);
     }
     else{
       this.me.money += Math.floor(0.8 * tile.upgradePrice);
+      this.printLog(`${this.me.name} sells house in ${tile.name}`, this.me);
     }
     tile.houses-=1;
     return tile;
   }
   public makeMove = (): Player => {
-    const originalPlayer = this.me;
     const rollDice1 = Math.floor(Math.random() * 6) + 1;
     const rollDice2 = Math.floor(Math.random() * 6) + 1;
     const moveForward = rollDice1 + rollDice2;
     const newPosition = (this.me.position + moveForward) % this.map.mapSize();
     const originalPosition = this.me.position;
-    originalPlayer.position = newPosition;
+    this.me.position = newPosition;
 
-    const newTile:Tile = this.map.getTile(newPosition);
-    //this.printLog(`${this.me.name} moves forward ${moveForward} squares`, this.me);
+    const newTile:Tile = this.map.getTile(newPosition); // what is this for?
 
     if(originalPosition > newPosition && newPosition != 0){
       const startTile = this.map.getTile(0) as EventTile;
-      startTile.event(originalPlayer);
+      startTile.event(this.me);
     }
-    return originalPlayer;
+    this.printLog(`${this.me.name} moves forward ${moveForward} squares`)
+    return this.me;
   }
 
   public updatePlayer = (newPlayer: Player): void => {
@@ -329,7 +328,14 @@ class Game {
   }
   public printLog = (message: string, player?: Player): void => {
     this.logs.push({ message, player });
+    const event = new CustomEvent('logsChange', { detail: this.logs })
+    const gameLog = document.getElementById("gameLog") as HTMLDivElement;
+    gameLog.dispatchEvent(event);
   }
+  public updateLog = (newLog: Log[]): void => {
+    this.logs = newLog;
+  }
+
   // should we even have me as a player? how would update another player's me? -> they could do this if the id of me is the same (like checkplayerturn)
   // also players still contains yourself, so make sure that they are consistent
   private me: Player;
@@ -341,4 +347,4 @@ class Game {
   private logs: Log[] = [];
 }
 
-export { Game };
+export { Game, Log };
