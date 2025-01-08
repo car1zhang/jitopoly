@@ -81,22 +81,26 @@ class Game {
     const upgradeCost = tile.upgradePrice;
     tile.houses++;
     this.me.money -= upgradeCost;
+    this.updatePopup(tile);
     this.printLog(`${this.me.name} upgraded house in ${tile.name} to level ${tile.houses}`, this.me);
     return tile;
   }
   public downgradeHouse = (): PropertyTile => {
     // sell back for 80%
     const tile = this.activeTile as PropertyTile;
+    console.log(tile, "before updating ");
     if(tile.houses == 1){
       this.me.money += Math.floor(0.8 * tile.basePrice);
       tile.owner = undefined;
-      this.printLog(`${this.me.name} downgraded house in ${tile.name} to level ${tile.houses}`, this.me);
+      this.closePropertyPopup();
+      this.printLog(`${this.me.name} has sold a house in ${tile.name}`, this.me);
     }
     else{
       this.me.money += Math.floor(0.8 * tile.upgradePrice);
-      this.printLog(`${this.me.name} sells house in ${tile.name}`, this.me);
+      this.printLog(`${this.me.name} downgraded house in ${tile.name} to level ${tile.houses}`, this.me);
     }
     tile.houses-=1;
+    this.updatePopup(tile);
     return tile;
   }
   public makeMove = (): Player => {
@@ -141,8 +145,12 @@ class Game {
   public getPlayers = (): Player[] => {
     return this.players;
   }
+  /*public getActiveTile = (): PropertyTile => {
+    return (this.activeTile as PropertyTile);
+  }*/
+
   public currentPropertyCost = (): number => {
-    return (this.activeTile as PropertyTile).basePrice;
+    return (this.map.getTile(this.me.position) as PropertyTile).basePrice;
   }
 
   private showPropertyPopup = (tile: PropertyTile, x: number, y: number): void => {

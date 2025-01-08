@@ -442,7 +442,7 @@ joinRoom?.addEventListener('submit', (event) => {
   const username = user.value;
   const gameId = gameRoom.value;
   const hide = document.getElementById("join-div") as HTMLDivElement;
-  me = new Player(uid(), username, '#000000', 1500, 0);
+  me = new Player(uid(), username, '#000000', 10, 0);
   socket.emit('join-game', gameId, me);
   hide.style.display = 'none';
   enableStartGameOption();
@@ -490,12 +490,23 @@ moveToggle.addEventListener('click', () => {
 
   enableEndTurn();
 })
-
+// find a way to enable this
 const enableBuyProperty = (): void => {
-  buyPropertyToggle.innerText = `Buy Property for $${game?.currentPropertyCost()}`;
+  const propertyCost = game?.currentPropertyCost() as number;
+  buyPropertyToggle.innerText = `Buy Property for $${propertyCost}`;
   buyPropertyToggle.classList.remove("hidden");
+  disableBuyProperty();
   // the css of the three buttons may affect each other when one is not displayed
 }
+const disableBuyProperty = (): void => {
+  const propertyCost = game?.currentPropertyCost() as number;
+  const player = game?.getMe() as Player;
+  buyPropertyToggle.disabled = false;
+  if(player.money < propertyCost){
+    buyPropertyToggle.disabled = true;
+  }
+}
+
 buyPropertyToggle.addEventListener('click', () => {
   buyPropertyToggle.classList.add("hidden");
   // only allow buy-property if player has enough money -> should update
@@ -517,6 +528,9 @@ downgradeToggle.addEventListener('click', () => {
   const downgradedTile = game?.downgradeHouse();
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: downgradedTile} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+  if(!buyPropertyToggle.classList.contains("hidden")) disableBuyProperty();
+  // if the user sells the current property, they should not be able to buy back
+  // disableBuyProperty() should only be called if buyPropertyToggle is open for purchase or smt
 })
 
 
