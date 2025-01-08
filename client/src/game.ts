@@ -81,7 +81,8 @@ class Game {
     const upgradeCost = tile.upgradePrice;
     tile.houses++;
     this.me.money -= upgradeCost;
-    this.updatePopup(tile);
+    this.activeTile = tile;
+    this.updatePopup();
     this.printLog(`${this.me.name} upgraded house in ${tile.name} to level ${tile.houses}`, this.me);
     return tile;
   }
@@ -97,10 +98,11 @@ class Game {
     }
     else{
       this.me.money += Math.floor(0.8 * tile.upgradePrice);
-      this.printLog(`${this.me.name} downgraded house in ${tile.name} to level ${tile.houses}`, this.me);
+      this.printLog(`${this.me.name} downgraded house in ${tile.name} to level ${tile.houses-1}`, this.me);
     }
     tile.houses-=1;
-    this.updatePopup(tile);
+    this.activeTile = tile;
+    this.updatePopup();
     return tile;
   }
   public makeMove = (): Player => {
@@ -145,10 +147,9 @@ class Game {
   public getPlayers = (): Player[] => {
     return this.players;
   }
-  /*public getActiveTile = (): PropertyTile => {
+  public getActiveTile = (): PropertyTile => {
     return (this.activeTile as PropertyTile);
-  }*/
-
+  }
   public currentPropertyCost = (): number => {
     return (this.map.getTile(this.me.position) as PropertyTile).basePrice;
   }
@@ -163,7 +164,7 @@ class Game {
     popup.style.left = `${x}px`;
     popup.style.top = `${y + 100}px`;
     popup.classList.remove('hidden');
-    this.updatePopup(tile);
+    this.updatePopup();
     document.removeEventListener('mousedown', this.handlePopupClick);
     setTimeout(() => {
       document.addEventListener('mousedown', this.handlePopupClick);
@@ -174,32 +175,37 @@ class Game {
     const clickEvent = event.target as HTMLElement;
     if(popup && !popup.contains(clickEvent)) this.closePropertyPopup();
   }
-  private updatePopup = (tile: PropertyTile): void => {
-    const tileName = document.getElementById('tileName') as HTMLHeadingElement;
-    tileName.innerText = tile.name;
-    const priceList = document.getElementById('costList') as HTMLDivElement;
-    priceList.innerHTML = `<div class="propertyCost"><p>houses</p><p>rent</p></div>`
-    tile.rent.forEach((cost : number, houseNum : number) => {
-      if(houseNum == 0) priceList.innerHTML += `<div class="propertyCost"><p>with rent</p><p>${cost}</p></div>`;
-      else priceList.innerHTML += `<div class="propertyCost"><p>with ${houseNum} house</p><p>${cost}</p></div>`;
-    })
-    // enable upgrade buttons etc
-    const propertyOptions = document.getElementById("propertyOptions") as HTMLDivElement;
-    propertyOptions.classList.add("hidden");
-    if(tile.owner && tile.owner.id == this.me.id){
-      propertyOptions.classList.remove("hidden");
-      // disable upgrade/downgrade
-      const upgradeHouse = document.getElementById("upgradeHouse") as HTMLButtonElement;
-      const downgradeHouse = document.getElementById("downgradeHouse") as HTMLButtonElement;
-      upgradeHouse.disabled = false, downgradeHouse.disabled = false;
-      if(this.me.money < tile.upgradePrice || tile.houses == 5){
-        upgradeHouse.disabled = true;
-      }
-      if(tile.houses < 1){
-        downgradeHouse.disabled = true;
+  public updatePopup = (): void => {
+    const tile = this.activeTile as PropertyTile;
+    if(tile){
+      const tileName = document.getElementById('tileName') as HTMLHeadingElement;
+      tileName.innerText = tile.name;
+      const priceList = document.getElementById('costList') as HTMLDivElement;
+      priceList.innerHTML = `<div class="propertyCost"><p>houses</p><p>rent</p></div>`
+      tile.rent.forEach((cost : number, houseNum : number) => {
+        if(houseNum == 0) priceList.innerHTML += `<div class="propertyCost"><p>with rent</p><p>${cost}</p></div>`;
+        else priceList.innerHTML += `<div class="propertyCost"><p>with ${houseNum} house</p><p>${cost}</p></div>`;
+      })
+      // enable upgrade buttons etc
+      const propertyOptions = document.getElementById("propertyOptions") as HTMLDivElement;
+      propertyOptions.classList.add("hidden");
+      if(tile.owner && tile.owner.id == this.me.id){
+        propertyOptions.classList.remove("hidden");
+        // disable upgrade/downgrade
+        if(this.players[this.currentTurn % this.players.length].id == this.me.id){
+          const upgradeHouse = document.getElementById("upgradeHouse") as HTMLButtonElement;
+          const downgradeHouse = document.getElementById("downgradeHouse") as HTMLButtonElement;
+          upgradeHouse.disabled = false, downgradeHouse.disabled = false;
+          if(this.me.money < tile.upgradePrice || tile.houses == 5){
+            upgradeHouse.disabled = true;
+          }
+          if(tile.houses < 1){
+            downgradeHouse.disabled = true;
+          }
+        }
       }
     }
-  }
+  } // if not player turn, update popup does not do the last part,
 
   private closePropertyPopup = (): void => {
     this.activeTile = null;
@@ -346,7 +352,9 @@ class Game {
   public updateLog = (newLog: Log[]): void => {
     this.logs = newLog;
   }
-
+  public nextTurn = (): void => {
+    this.currentTurn++;
+  }
   // should we even have me as a player? how would update another player's me? -> they could do this if the id of me is the same (like checkplayerturn)
   // also players still contains yourself, so make sure that they are consistent
   private me: Player;

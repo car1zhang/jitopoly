@@ -442,7 +442,7 @@ joinRoom?.addEventListener('submit', (event) => {
   const username = user.value;
   const gameId = gameRoom.value;
   const hide = document.getElementById("join-div") as HTMLDivElement;
-  me = new Player(uid(), username, '#000000', 10, 0);
+  me = new Player(uid(), username, '#000000', 300, 0);
   socket.emit('join-game', gameId, me);
   hide.style.display = 'none';
   enableStartGameOption();
@@ -465,7 +465,11 @@ socket.on("player-data", (players) => {
 
 const enableMove = (): void => {
   moveToggle.classList.remove("hidden");
-  // this should also allow buying houses, upgrades etc to be part of the update list 
+  // enable upgrades/downgrades
+  upgradeToggle.disabled = false;
+  upgradeToggle.title = '';
+  downgradeToggle.disabled = false;
+  upgradeToggle.title = '';
 } 
 moveToggle.addEventListener('click', () => {
   moveToggle.classList.add("hidden");
@@ -513,6 +517,7 @@ buyPropertyToggle.addEventListener('click', () => {
   const newProperty = game?.buyProperty() as PropertyTile;
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: newProperty} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+  game?.updatePopup();
 })
 
 upgradeToggle.addEventListener('click', () => {
@@ -521,6 +526,7 @@ upgradeToggle.addEventListener('click', () => {
   const upgradedTile = game?.upgradeHouse();
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: upgradedTile} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
+  if(!buyPropertyToggle.classList.contains("hidden")) disableBuyProperty();
 })
 
 downgradeToggle.addEventListener('click', () => {
@@ -529,14 +535,24 @@ downgradeToggle.addEventListener('click', () => {
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: downgradedTile} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
   if(!buyPropertyToggle.classList.contains("hidden")) disableBuyProperty();
-  // if the user sells the current property, they should not be able to buy back
-  // disableBuyProperty() should only be called if buyPropertyToggle is open for purchase or smt
+  if(!endTurnToggle.classList.contains("hidden")) disableEndTurn();
 })
 
 
 const enableEndTurn = (): void => {
   endTurnToggle.classList.remove("hidden");
+  disableEndTurn();
 }
+const disableEndTurn = (): void => {
+  const player = game?.getMe() as Player;
+  endTurnToggle.disabled = false;
+  endTurnToggle.title='';
+  if(player.money < 0){
+    endTurnToggle.disabled = true;
+    endTurnToggle.title='You are broke right now!';
+  }
+}
+
 endTurnToggle.addEventListener('click', () => {
   // remember end turn cannot happen if current player money is in the negative -> should just be unclickable
   buyPropertyToggle.classList.add("hidden");
@@ -546,7 +562,11 @@ endTurnToggle.addEventListener('click', () => {
 
 const disableMove = (): void => {
   moveToggle.classList.add("hidden");
-  // this should disable upgrades and stuff on the update list
+  // disabled upgrade/downgrade when not player turn
+  upgradeToggle.disabled = true;
+  upgradeToggle.title = "Wait for your turn!";
+  downgradeToggle.disabled = true;
+  downgradeToggle.title = "Wait for your turn!";
 }
 
 
@@ -582,7 +602,10 @@ socket.on("update-local-game", (change) => {
   const playerTurn: number = change.turn;
   const update: Update = change.update;
   if(update !== null) updateLocalGame(update);
-  else (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
+  else{
+    (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
+    game?.nextTurn();
+  }
 })
 socket.on("new-players", (players) => {
   updatePlayerList(players as Player[]);
