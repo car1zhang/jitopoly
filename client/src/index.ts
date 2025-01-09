@@ -192,7 +192,6 @@ const placeholderMap: Tile[] = [
     name: 'Vacation',
     icon: 'vacation.png',
     event: (player: Player) => {
-      player.status = 'vacation'; // what is the point of this
       game?.printLog(`${player.name} is on vacation`, player)
     }
   },
@@ -388,6 +387,17 @@ const randomUpdates: { [key: string]: (update: Update) => void } = {
   },
   "tile": (update: Update) => {
     game?.updateTile(update.tile as PropertyTile);
+  },
+  "quit": (update: Update) => {
+    game?.removePlayer(update.player as Player);
+    updatePlayerList(game?.getPlayers() as Player[]);
+    upgradeToggle.classList.add("hidden");
+    downgradeToggle.classList.add("hidden");
+    const me = game?.getMe() as Player;
+    if(me.id == (update.player as Player).id){
+      disableMove();
+      console.log('here');
+    }
   }
 }
 
@@ -434,8 +444,12 @@ const upgradeToggle = document.getElementById("upgradeHouse") as HTMLButtonEleme
 const downgradeToggle = document.getElementById("downgradeHouse") as HTMLButtonElement;
 const canvasToggle = document.getElementById('canvasWrapper') as HTMLCanvasElement;
 const gameLogToggle = document.getElementById("gameLog") as HTMLDivElement;
+const prisonBailToggle = document.getElementById("prison-bail") as HTMLButtonElement;
+const prisonFreeToggle = document.getElementById("prison-free") as HTMLButtonElement;
+const bankruptToggle = document.getElementById("bankrupt") as HTMLButtonElement;
 const socket = io('http://localhost:8000')
 let me: Player | null = null;
+
 
 joinRoom?.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -446,6 +460,11 @@ joinRoom?.addEventListener('submit', (event) => {
   socket.emit('join-game', gameId, me);
   hide.style.display = 'none';
   enableStartGameOption();
+})
+socket.on("full-game", () => {
+  const fullgame = document.getElementById("full-game") as HTMLHeadingElement;
+  fullgame.classList.remove("hidden");
+  startToggle.classList.add("hidden");
 })
 const enableStartGameOption = (): void => {
   startToggle.classList.remove('hidden');
@@ -464,13 +483,21 @@ socket.on("player-data", (players) => {
 })
 
 const enableMove = (): void => {
-  moveToggle.classList.remove("hidden");
-  // enable upgrades/downgrades
-  upgradeToggle.disabled = false;
-  upgradeToggle.title = '';
-  downgradeToggle.disabled = false;
-  upgradeToggle.title = '';
-} 
+  const status = (game?.getMe() as Player).status;
+  bankruptToggle.classList.remove("hidden");
+  if(status == 'jailed'){
+    enablePrison();
+  }
+  else{
+    moveToggle.classList.remove("hidden");
+    // enable upgrades/downgrades
+    upgradeToggle.disabled = false;
+    upgradeToggle.title = '';
+    downgradeToggle.disabled = false;
+    upgradeToggle.title = '';
+  }
+}
+
 moveToggle.addEventListener('click', () => {
   moveToggle.classList.add("hidden");
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.makeMove()} as Update);
@@ -489,9 +516,7 @@ moveToggle.addEventListener('click', () => {
   else{
     // give buy option
     enableBuyProperty();
-  }
-
-
+    }
   enableEndTurn();
 })
 // find a way to enable this
@@ -499,10 +524,10 @@ const enableBuyProperty = (): void => {
   const propertyCost = game?.currentPropertyCost() as number;
   buyPropertyToggle.innerText = `Buy Property for $${propertyCost}`;
   buyPropertyToggle.classList.remove("hidden");
-  disableBuyProperty();
+  checkBuyProperty();
   // the css of the three buttons may affect each other when one is not displayed
 }
-const disableBuyProperty = (): void => {
+const checkBuyProperty = (): void => {
   const propertyCost = game?.currentPropertyCost() as number;
   const player = game?.getMe() as Player;
   buyPropertyToggle.disabled = false;
@@ -526,7 +551,7 @@ upgradeToggle.addEventListener('click', () => {
   const upgradedTile = game?.upgradeHouse();
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: upgradedTile} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
-  if(!buyPropertyToggle.classList.contains("hidden")) disableBuyProperty();
+  if(!buyPropertyToggle.classList.contains("hidden")) checkBuyProperty();
 })
 
 downgradeToggle.addEventListener('click', () => {
@@ -534,16 +559,52 @@ downgradeToggle.addEventListener('click', () => {
   const downgradedTile = game?.downgradeHouse();
   socket.emit("update-game", gameRoom.value, {type: 'tile', tile: downgradedTile} as Update);
   socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.getMe()} as Update);
-  if(!buyPropertyToggle.classList.contains("hidden")) disableBuyProperty();
-  if(!endTurnToggle.classList.contains("hidden")) disableEndTurn();
+  if(!buyPropertyToggle.classList.contains("hidden")) checkBuyProperty();
+  if(!endTurnToggle.classList.contains("hidden")) checkEndTurn();
 })
 
+const enablePrison = (): void => {
+  prisonBailToggle.classList.remove("hidden");
+  prisonFreeToggle.classList.remove("hidden");
+  checkPrisonBail();
+}
+prisonBailToggle.addEventListener('click', () => {
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.prisonEscape()} as Update);
+  prisonBailToggle.classList.add("hidden");
+  prisonFreeToggle.classList.add("hidden");
+  socket.emit("new-turn", gameRoom.value);
+})
+const checkPrisonBail = (): void => {
+  const player = game?.getMe() as Player;
+  prisonBailToggle.disabled = false;
+  if(player.money < 50){
+    prisonBailToggle.disabled = true;
+    prisonBailToggle.title = 'You are broke right now!';
+  }
+}
+prisonFreeToggle.addEventListener('click', () => {
+  socket.emit("update-game", gameRoom.value, {type: 'player', player: game?.prisonFreeRoll()} as Update);
+  prisonBailToggle.classList.add("hidden");
+  prisonFreeToggle.classList.add("hidden");
+  socket.emit("new-turn", gameRoom.value);
+})
+
+bankruptToggle.addEventListener('click', () => {
+  endTurnToggle.classList.add("hidden");
+  disableMove();
+  const me = game?.getMe() as Player;
+  socket.emit("quit-game", 
+    gameRoom.value, 
+    me.id, 
+    {type: 'quit', player: me} as Update,
+    () => socket.emit("new-turn", gameRoom.value));
+})
 
 const enableEndTurn = (): void => {
   endTurnToggle.classList.remove("hidden");
-  disableEndTurn();
+  checkEndTurn();
 }
-const disableEndTurn = (): void => {
+const checkEndTurn = (): void => {
   const player = game?.getMe() as Player;
   endTurnToggle.disabled = false;
   endTurnToggle.title='';
@@ -562,6 +623,8 @@ endTurnToggle.addEventListener('click', () => {
 
 const disableMove = (): void => {
   moveToggle.classList.add("hidden");
+  bankruptToggle.classList.add("hidden");
+  buyPropertyToggle.classList.add("hidden");
   // disabled upgrade/downgrade when not player turn
   upgradeToggle.disabled = true;
   upgradeToggle.title = "Wait for your turn!";
@@ -585,6 +648,10 @@ const updateLocalGame = (update: Update): void => {
       break;
     case "tile":
       randomUpdates["tile"](update);
+      break;
+    case "quit":
+      randomUpdates["quit"](update)
+      break;
     default:
       console.log("nothing");
   }
@@ -594,18 +661,26 @@ const startGame = (playerList: Player[]): void => {
   canvasToggle.classList.remove("hidden");
   game = new Game('gameCanvas', me as Player, playerList, placeholderMap, placeholderCountries);  
   game.printLog(`The game has started`);
-  socket.emit("start-game", gameRoom.value); // need some gameupdate
+  socket.emit("start-game", gameRoom.value); 
 }
 
-socket.on("update-local-game", (change) => {
+socket.on("update-local-game", (change, callback?) => {
   // make updates
   const playerTurn: number = change.turn;
   const update: Update = change.update;
-  if(update !== null) updateLocalGame(update);
+  if(update !== null){
+    updateLocalGame(update);
+    if(callback) callback();
+  }
   else{
     (game?.checkPlayerTurn(playerTurn)) ? enableMove() : disableMove();
-    game?.nextTurn();
+    game?.nextTurn(playerTurn);
   }
+})
+socket.on("end-game", (winner) => {
+  game?.printLog(`The winner of the game is ${(winner as Player).name}`);
+  disableMove();
+  
 })
 socket.on("new-players", (players) => {
   updatePlayerList(players as Player[]);

@@ -33,16 +33,27 @@ class GameMap { // list of tiles must be divisible by 4
   public mapSize = (): number => {
     return this.tiles.length;
   }
-  public getTile = (indx:number): Tile => {
+  public getTile = (indx: number): Tile => {
     return this.tiles[indx];
   }
-  public updateTiles = (newTile:Tile): void => {
+  public updateTiles = (newTile: PropertyTile): void => {
     for(let i=0;i<this.tiles.length;i++){
       if(this.tiles[i].name == newTile.name){
         this.tiles[i]=newTile;
         return;
       }
     }
+  }
+  public clearOwner = (player: Player): void => {
+    for(let i=0;i<this.tiles.length;i++){
+      const property = this.tiles[i] as PropertyTile;
+      if(property.owner && property.owner.id == player.id){
+        property.owner = undefined;
+        property.houses = 0;
+        this.tiles[i] = property;
+      }
+    }
+    console.log(this.tiles);
   }
 
   private tiles: Tile[] = [];

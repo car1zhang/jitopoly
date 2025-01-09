@@ -39,7 +39,6 @@ class Game {
     const newTile:Tile = this.map.getTile(this.me.position);
     let updatePlayers = [] as Player[];
     if('country' in newTile){
-      this.activeTile = newTile;
       if(newTile.houses > 0 && newTile.owner){
         // owned by someone
         const tileOwner = newTile.owner;
@@ -123,6 +122,29 @@ class Game {
     return this.me;
   }
 
+  public prisonEscape = (): Player => {
+    this.me.money -= 50;
+    this.me.status = 'active';
+    this.printLog(`${this.me.name} paid $50 to escape prison`);
+    return this.me;
+  }
+  public prisonFreeRoll = (): Player => {
+    const rollDice1 = Math.floor(Math.random() * 6) + 1;
+    const rollDice2 = Math.floor(Math.random() * 6) + 1;
+    if(rollDice1 == rollDice2){
+      this.me.status = 'active';
+      this.printLog(`${this.me.name} is free from prison rolling two ${rollDice1}`);
+    }
+    return this.me;
+  }
+  public removePlayer = (oldPlayer: Player): void => {
+    // quiting the game
+    const playerIndex = this.players.findIndex(player => player.id == oldPlayer.id);
+    if(playerIndex !== -1) this.players.splice(playerIndex, 1);
+    this.map.clearOwner(oldPlayer)
+    this.printLog(`${oldPlayer.name} has when bankrupt and quit the game`);
+  }
+
   public updatePlayer = (newPlayer: Player): void => {
     const findIndex = this.players.findIndex(player => player.id == newPlayer.id)
     console.log(this.players[findIndex], newPlayer, "updating player here");
@@ -150,13 +172,20 @@ class Game {
   public getActiveTile = (): PropertyTile => {
     return (this.activeTile as PropertyTile);
   }
+  public getPlayerStatus = (playerId: string): string => {
+    this.players.forEach((player: Player) => {
+      if(playerId == player.id) return player.status;
+    })
+    return 'bankrupt';
+  }
   public currentPropertyCost = (): number => {
     return (this.map.getTile(this.me.position) as PropertyTile).basePrice;
   }
 
   private showPropertyPopup = (tile: PropertyTile, x: number, y: number): void => {
     const popup = document.getElementById('popup') as HTMLDivElement;
-    if(this.activeTile === tile){
+    if(this.activeTile && this.activeTile === tile){
+      console.log('here on the first time?', this.activeTile, tile);
       this.closePropertyPopup();
       return;
     }
@@ -192,7 +221,7 @@ class Game {
       if(tile.owner && tile.owner.id == this.me.id){
         propertyOptions.classList.remove("hidden");
         // disable upgrade/downgrade
-        if(this.players[this.currentTurn % this.players.length].id == this.me.id){
+        if(this.players[this.currentTurn].id == this.me.id){
           const upgradeHouse = document.getElementById("upgradeHouse") as HTMLButtonElement;
           const downgradeHouse = document.getElementById("downgradeHouse") as HTMLButtonElement;
           upgradeHouse.disabled = false, downgradeHouse.disabled = false;
@@ -309,8 +338,12 @@ class Game {
     // do something with tile
 
     if((tile as PropertyTile).country){
+      const canvasCtx = document.getElementById("gameCanvas") as HTMLCanvasElement;
       createTile.on('mousedown', (e) => {
+        e.e.preventDefault();
+        canvasCtx.focus();
         console.log('Tile clicked', tile, e);
+        console.log(this.activeTile, 'active here');
         const canvasRect = createTile.getBoundingRect();
         const canvasElement = this.canvas.upperCanvasEl;
         const canvasBound = canvasElement.getBoundingClientRect();
@@ -352,8 +385,8 @@ class Game {
   public updateLog = (newLog: Log[]): void => {
     this.logs = newLog;
   }
-  public nextTurn = (): void => {
-    this.currentTurn++;
+  public nextTurn = (playerTurn: number): void => {
+    this.currentTurn = playerTurn;
   }
   // should we even have me as a player? how would update another player's me? -> they could do this if the id of me is the same (like checkplayerturn)
   // also players still contains yourself, so make sure that they are consistent
@@ -361,7 +394,7 @@ class Game {
   private map: GameMap;
   private players: Player[] = [];
   //private playerMarkers: { [playerID: string]: Circle } = {};
-  private currentTurn= 0; // add this in later
+  private currentTurn= 0; 
   private activeTrades: Trade[] = [];
   private logs: Log[] = [];
 }

@@ -45,6 +45,7 @@
         <canvas id="gameCanvas"></canvas>
         <div id="gameLog"></div>
         <div id="playerList"></div>
+        <button class="hidden" id="bankrupt">Bankrupt</button>
       </div>
       <div class="hidden popup" id="popup">
         <div>
@@ -69,10 +70,15 @@
         <button type="submit">Join</button>
       </form>
     </div>
-    <button class="hidden" id="start-game">Start Game</button>
+    <div>
+      <button class="hidden" id="start-game">Start Game</button>
+      <h2 class="hidden" id="full-game">The game has already started</h2>
+    </div>
     <div>
       <button class="hidden" id="move">Move</button>
       <button class="hidden" id="buy-property">Buy Property</button>
+      <button class="hidden" id="prison-bail">Get out of Prison for $50</button>
+      <button class="hidden" id="prison-free">Roll to get out of Jail</button>
       <button class="hidden" id="end-move">End Turn</button>
     </div>
   </body>

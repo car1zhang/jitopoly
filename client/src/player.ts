@@ -4,7 +4,7 @@ class Player {
   public name: string;
   public color: string; // hex color code
   public money: number;
-  public status: 'active' | 'vacation' | 'jailed' | 'bankrupt' = 'active';
+  public status: 'active' | 'jailed' = 'active';
   public position: number; // position on map, index of map array (do we need this?)
 
   constructor(
